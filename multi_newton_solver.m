@@ -20,95 +20,88 @@
 %OUTPUTS:
 %x: the estimate of the root computed by the function
 % exit_flag: an integer indicating whether or not the solver succeeded
-function [x, exit_flag] = multi_newton_solver(fun,x_guess,solver_params)
-    %unpack values from struct (if fields in struct have been set)
+%Implementation of Newton's method
+function [x,exit_flag,num_evals] = ...
+    multi_newton_solver(fun,x_guess,solver_params)
+    % I added num_evals as a third output for the integration experiments.
+
+    % Unpack values from struct
     dxmin = 1e-14;
     if isfield(solver_params,'dxmin')
         dxmin = solver_params.dxmin;
     end
+
     ftol = 1e-9;
     if isfield(solver_params,'ftol')
         ftol = solver_params.ftol;
     end
+
     max_iter = 200;
     if isfield(solver_params,'max_iter')
         max_iter = solver_params.max_iter;
     end
+
     dxmax = 1e8;
     if isfield(solver_params,'dxmax')
         dxmax = solver_params.dxmax;
     end
+
     numerical_diff = 1;
     if isfield(solver_params,'numerical_diff')
         numerical_diff = solver_params.numerical_diff;
     end
-   
-    x = x_guess(:);
 
-for count = 1:max_iter
-    if numerical_diff
-        fval = fun(x);
-        J = approximate_jacobian(fun, x);
-    else
-        [fval, J] = fun(x);
+    x = x_guess(:);
+    num_evals = 0; % reset the count each solv
+
+    for count = 1:max_iter
+        if numerical_diff
+            fval = fun(x);
+        else
+            [fval,J] = fun(x);
+        end
+        num_evals = num_evals + 1; % count the eval
+
+        if norm(fval) < ftol
+            exit_flag = 1;
+            return
+        end
+
+        if numerical_diff
+            [J,jac_evals] = approximate_jacobian(fun,x);
+            num_evals = num_evals + jac_evals; 
+        end
+
+        if abs(det(J*J')) <= dxmin
+            fprintf('Stopped: Jacobian check at iteration %d\n',count)
+            exit_flag = 0;
+            return
+        end
+
+        dx = -(J\fval); % took awaay the duplicates
+
+        if norm(dx) > dxmax
+            fprintf('Stopped: step too large at iteration %d\n',count)
+            exit_flag = 0;
+            return
+        end
+
+        x = x + dx;
+
+        if norm(dx) < dxmin
+            fval = fun(x);
+            num_evals = num_evals + 1;
+            exit_flag = double(norm(fval) < ftol);
+            return
+        end
     end
+
+    fval = fun(x);
+    num_evals = num_evals + 1; % count the final check
 
     if norm(fval) < ftol
         exit_flag = 1;
-        return
-    end
-
-    if abs(det(J*J')) <= dxmin
-    fprintf('Stopped: Jacobian check at iteration %d\n', count)
-    fprintf('det(J*J'') = %.3e\n', det(J*J'))
-    fprintf('Residual norm = %.3e\n', norm(fval))
-    exit_flag = 0;
-    return
-end
-
-dx = -(J \ fval);
-
-if norm(dx) > dxmax
-    fprintf('Stopped: step too large at iteration %d\n', count)
-    fprintf('Step norm = %.3e\n', norm(dx))
-    exit_flag = 0;
-    return
-end
-
-    dx = -(J \ fval);
-
-    if norm(dx) > dxmax
-        exit_flag = 0;
-        return
-    end
-
-    x = x + dx;
-
-    if norm(dx) < dxmin
-        fval = fun(x); 
-        exit_flag = double(norm(fval) < ftol);
-        return
-    end
-
-    if norm(dx) < dxmin
-    fval = fun(x);
-    fprintf('Stopped: tiny step at iteration %d; residual = %.3e\n', ...
-        count, norm(fval))
-    exit_flag = double(norm(fval) < ftol);
-    return
+    else
+        exit_flag = -1;
     end
 end
-fval = fun(x);  % Evaluate at the final coordinates
-fprintf('Final residual norm: %.3e\n', norm(fval))
-fprintf('Final step norm: %.3e\n', norm(dx))
-exit_flag = -1;
-end
-
-% params = struct();
-% params.numerical_diff = 1;
-% 
-% X0 = [1; 3.0];    
-% [X, exit_flag] = multi_newton_solvers(@collision_wrapper, X0, params);
-% theta = X(1);
-% t_c = X(2);
-% projectile_simulation(theta, t_c);

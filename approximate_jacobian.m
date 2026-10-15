@@ -6,63 +6,31 @@
 %OUTPUTS:
 %J: approximation of Jacobian of fun at x
 % num_evals: the number of times a rate function has been called
-function [J, num_evals] = approximate_jacobian(fun,X)
-    %set the step size to be tiny
+%Implementation of finite difference approximation
+%for Jacobian of multidimensional function
+function [J,num_evals] = approximate_jacobian(fun,X)
     dx_scalar = 1e-6;
-    
-    f0 = wrapper(fun(X)); %evaluate function to determine number of outputs
-    
-    num_in = length(X);     %determine dimension of the input vector
-    num_out = length(f0);   %determine dimension of the output vector
-    
-    %initialize the dx vector
+
+    f0 = fun(X);
+    num_evals = 1; % starting a new count w the first look
+
+    num_in = length(X);
+    num_out = length(f0);
+
     dX = zeros(size(X));
+    J = zeros(num_out,num_in);
 
-    %initialize the Jacobian to be a matrix
-    %with height num_out and width num_in
-    J = zeros([num_out,num_in]);
-
-    %iterate through each scalar input of fun
     for n = 1:num_in
-        %set dx vector so it has the form:
-        %[0,...,0,dx_scalar,0,...,0]^T
-        %where the nonzero element is at dx
         dX(n) = dx_scalar;
 
-        %Use finite differences to compute the vector dfun/dx_n
-        %partial derivative of the function 
-        %w/respect to the nth element of X
-        %the result should be a vector quantity
+        f_plus = fun(X + dX);
+        f_minus = fun(X - dX);
+        num_evals = num_evals + 2;
 
-        dfdx = (wrapper(fun(X + dX)) - wrapper(fun(X - dX)))/(2*dx_scalar);
+        dfdx = (f_plus - f_minus)/(2*dx_scalar);
+        J(:,n) = dfdx;
 
-        %Set the nth column of J to dfun/dx_n
-
-        J(:, n) = dfdx;
-
-
-        dX(n) = 0; %reset the dx vector to [0,...,0]^T
+        dX(n) = 0;
     end
-    num_evals = count('g'); %count output
 end
-
-function output = wrapper(func)
-    count('c'); %The actual counting
-    output = func; %wrappping
-end
-
-function n = count(action) %lk inspo from like a matlab forum but dw i get how it works
-    persistent n_count %makes this like a variable that remembers its value between calls
-    if isempty(n_count) %init
-        n_count = 0;
-    end
-
-    switch action
-        case 'c' %counting
-            n_count = n_count +1;
-        case 'r' %if called to reset
-            n_count = 0;
-        case 'g' %call if you want to get final total
-    end
-    n = n_count;
-end
+% I removed the counter so counts do not carry between indiv calls

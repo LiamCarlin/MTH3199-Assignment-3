@@ -11,32 +11,23 @@
 % formula depends on the integration method used
 %num_evals: A count of the number of times that you called
 % rate_func_in when computing the next step
+%This function computes the value of X at the next time step
+%using the Backward Euler approximation
 function [XB,num_evals] = backward_euler_step(rate_func_in,t,XA,h)
+    XA = XA(:); 
 
     solver_params = struct();
-    G = @(X) XA + h.*wrapper(rate_func_in(t + h, X))- X;
-    [XB, ~, num_evals] = multi_newton_solver(G, XA, solver_params);
-    num_evals = num_evals + count('g'); %count output
+    solver_params.ftol = 1e-12; 
 
-end
+    % kept the backward Euler equation w/o count stuff
+    G = @(X) XA + h.*rate_func_in(t+h,X) - X;
 
-function output = wrapper(func)
-    count('c'); %The actual counting
-    output = func; %wrappping
-end
+    [XB,exit_flag,num_evals] = multi_newton_solver(G,XA,solver_params);
 
-function n = count(action) %lk inspo from like a matlab forum but dw i get how it works
-    persistent n_count %makes this like a variable that remembers its value between calls
-    if isempty(n_count) %init
-        n_count = 0;
+    % make sure that it worked
+    if exit_flag ~= 1
+        error('backward euler newton solver did not converge');
     end
-
-    switch action
-        case 'c' %counting
-            n_count = n_count +1;
-        case 'r' %if called to reset
-            n_count = 0;
-        case 'g' %call if you want to get final total
-    end
-    n = n_count;
 end
+% u can just use the newton solver count beucase it is always called and it
+% has its own count

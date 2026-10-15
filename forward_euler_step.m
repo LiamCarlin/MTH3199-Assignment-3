@@ -12,31 +12,6 @@
 %num_evals: A count of the number of times that you called
 % rate_func_in when computing the next step
 function [XB,num_evals] = forward_euler_step(rate_func_in,t,XA,h)
-
-
-    XB = XA + h.*wrapper(rate_func_in(t, XA)); % Actual euler
-
-    num_evals = count('g'); %count output
-    
-end
-
-function output = wrapper(func)
-    count('c'); %The actual counting
-    output = func; %wrappping
-end
-
-function n = count(action) %lk inspo from like a matlab forum but dw i get how it works
-    persistent n_count %makes this like a variable that remembers its value between calls
-    if isempty(n_count) %init
-        n_count = 0;
-    end
-
-    switch action
-        case 'c' %counting
-            n_count = n_count +1;
-        case 'r' %if called to reset
-            n_count = 0;
-        case 'g' %call if you want to get final total
-    end
-    n = n_count;
+    XB = XA + h.*rate_func_in(t,XA); 
+    num_evals = 1;
 end

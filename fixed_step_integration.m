@@ -12,21 +12,24 @@
 %X_list: the vector of X, [X0';X1';X2';...;(X_end)'] at each time step
 %h_avg: the average step size
 %num_evals: total number of calls made to rate_func_in during the integration
-function [t_list,X_list,h, num_evals] = fixed_step_integration(rate_func_in,step_func,tspan,X0,h_ref)
-    N = ceil((tspan(2) - tspan(1))/h_ref); % href > h --> href > (tf-t0)/N --> N > (tf-t0)/href
+
+function [t_list,X_list,h,num_evals] = fixed_step_integration(rate_func_in,step_func,tspan,X0,h_ref)
+
+    N = floor((tspan(2) - tspan(1))/h_ref) + 1;
     h = (tspan(2) - tspan(1))/N;
-    X_list = zeros(N+1, 1);
-    X_list(1) = X0;
+
+    X = X0(:);
+    X_list = zeros(N+1,length(X));
+    X_list(1,:) = X';
+
     num_evals = 0;
-    t_list = tspan(1):h:tspan(2); % t_list is indep. of the actual math and only depends on h so compute it now instead of in loop
 
-    if t_list(end) ~= tspan(2)
-        return; %Last input to t_list should be end of integration array
-    end
+    % include both endpoints
+    t_list = linspace(tspan(1),tspan(2),N+1)';
 
-    for i=1:N
-        [xa, count] = step_func(rate_func_in,t_list(i),X_list(i),h);
-        X_list(i+1) = xa;
+    for i = 1:N
+        [X,count] = step_func(rate_func_in,t_list(i),X,h);
+        X_list(i+1,:) = X';
         num_evals = num_evals + count;
     end
 end
